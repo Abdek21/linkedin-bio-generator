@@ -1,0 +1,16 @@
+/* Animation du bouton */
+button {
+    transition: all 0.3s ease;
+}
+
+/* Style des inputs */
+input:focus {
+    outline: none;
+    border-color: #3B82F6;
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+}
+
+/* Cache initialement le résultat */
+.hidden {
+    display: none;
+}
