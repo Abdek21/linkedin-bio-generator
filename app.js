@@ -1,9 +1,7 @@
 // Config
 const MAX_FREE_GENERATIONS = 3;
 let freeGenerations = localStorage.getItem('freeGenerations') || 0;
-import { inject } from '@vercel/analytics'
-
-inject()
+import { Analytics } from "@vercel/analytics/react"
 // Track events
 function trackEvent(action, params = {}) {
     gtag('event', action, {
@@ -131,11 +129,3 @@ function showError(message) {
         </div>`;
 }
 
-function trackGeneration(jobType) {
-    if (window.va) {
-        va.track('Bio Generated', {
-            jobType: jobType.toLowerCase(),
-            isMobile: /Mobi|Android/i.test(navigator.userAgent)
-        });
-    }
-}
