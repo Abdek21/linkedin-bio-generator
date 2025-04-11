@@ -244,9 +244,9 @@ function trackEvent(action, params = {}) {
         });
     }
     
-    // Vercel Analytics
-    if (window.va) {
-        va.track(action, params);
+    // Vercel Analytics - vérification plus robuste
+    if (typeof window.va !== 'undefined' && typeof window.va.track === 'function') {
+        window.va.track(action, params);
     }
     
     console.log('[Analytics]', action, params);
