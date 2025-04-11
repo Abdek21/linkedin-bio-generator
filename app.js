@@ -1,11 +1,19 @@
-// Configuration
-const LOADING_HTML = `
-<div class="flex justify-center items-center py-8">
-    <div class="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
-</div>
-`;
+// Config
+const MAX_FREE_GENERATIONS = 3;
+let freeGenerations = localStorage.getItem('freeGenerations') || 0;
+import { inject } from '@vercel/analytics'
 
-// Génère la bio
+inject()
+// Track events
+function trackEvent(action, params = {}) {
+    gtag('event', action, {
+        ...params,
+        free_uses: freeGenerations,
+        page_location: window.location.href
+    });
+}
+
+// Generate Bio
 async function generateBio() {
     const job = document.getElementById("job").value.trim();
     const skills = document.getElementById("skills").value.trim();
@@ -16,99 +24,118 @@ async function generateBio() {
     }
 
     try {
-        // Afficher le loading
-        document.getElementById("bio-content").innerHTML = LOADING_HTML;
+        // Show loading
+        document.getElementById("bio-content").innerHTML = `
+            <div class="flex justify-center items-center py-8">
+                <div class="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+            </div>`;
         document.getElementById("result").classList.remove("hidden");
+
+        // Track generation
+        freeGenerations++;
+        localStorage.setItem('freeGenerations', freeGenerations);
+        trackEvent('generate_bio', { job_type: job.toLowerCase() });
 
         const response = await fetch("/api/generate", {
             method: "POST",
-            headers: { 
-                "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ 
-                job, 
-                skills,
-                tone: "professionnel" // Peut être modifié plus tard
-            })
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ job, skills })
         });
 
-        if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.error || `Erreur HTTP: ${response.status}`);
-        }
-
-        const data = await response.json();
+        if (!response.ok) throw new Error(`Erreur HTTP: ${response.status}`);
         
-        if (!data?.choices?.[0]?.message?.content) {
-            throw new Error("Format de réponse inattendu de l'API");
-        }
+        const data = await response.json();
+        if (!data?.choices?.[0]?.message?.content) throw new Error("Réponse API invalide");
 
-        const bioContent = formatBio(data.choices[0].message.content);
-        document.getElementById("bio-content").innerHTML = bioContent;
+        document.getElementById("bio-content").innerHTML = formatBio(data.choices[0].message.content);
+        
+        // Show Pro CTA after 3 uses
+        if (freeGenerations >= MAX_FREE_GENERATIONS) {
+            document.getElementById('pro-cta').classList.remove('hidden');
+            trackEvent('show_pro_offer');
+        }
 
     } catch (error) {
         console.error("Erreur:", error);
         showError(error.message);
+        trackEvent('error', { error: error.message });
     }
 }
 
-// Formate la bio avec un meilleur rendu
-function formatBio(bioText) {
-    // Convertit les ** en strong et les retours à la ligne en <br>
-    return bioText
-        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-        .replace(/\n/g, '<br>')
-        .replace(/- (.*?)(<br>|$)/g, '• $1$2');
-}
-
-// Export PDF
+// PDF Export with watermark
 function exportToPDF() {
     try {
         const { jsPDF } = window.jspdf;
         const doc = new jsPDF();
+        const text = document.getElementById("bio-content").innerText;
         
-        const bioText = document.getElementById("bio-content").innerText;
-        
-        // Style du PDF
         doc.setFont("helvetica");
-        doc.setFontSize(12);
-        doc.text(bioText, 15, 15, { maxWidth: 180 });
+        doc.text(text, 15, 15, { maxWidth: 180 });
         
-        // Ajout du footer
-        doc.setFontSize(10);
-        doc.setTextColor(100);
-        doc.text("Généré avec linkedinbio.site", 105, 285, { align: "center" });
+        // Add watermark for free version
+        if (freeGenerations >= MAX_FREE_GENERATIONS) {
+            doc.setTextColor(150);
+            doc.setFontSize(10);
+            doc.text("Généré avec linkedinbio.site - Version Pro disponible", 105, 285, { align: "center" });
+        }
         
-        doc.save("ma-bio-linkedin.pdf");
+        doc.save("bio-linkedin.pdf");
+        trackEvent('download_pdf');
+
     } catch (error) {
-        console.error("Erreur PDF:", error);
         showError("Erreur lors de la génération du PDF");
+        trackEvent('pdf_error', { error: error.message });
     }
 }
 
-// Copie dans le presse-papier
-function copyToClipboard() {
-    const bioText = document.getElementById("bio-content").innerText;
-    navigator.clipboard.writeText(bioText)
-        .then(() => alert("Bio copiée dans le presse-papier !"))
-        .catch(err => showError("Échec de la copie : " + err));
+// Pro Version Functions
+function showProModal() {
+    document.getElementById('pro-modal').classList.remove('hidden');
+    trackEvent('view_pro_modal');
 }
 
-// Affiche les erreurs
+function hideProModal() {
+    document.getElementById('pro-modal').classList.add('hidden');
+}
+
+function startCheckout() {
+    window.open('https://checkout.stripe.com/...', '_blank');
+    trackEvent('begin_checkout');
+}
+
+// Helper functions
+function formatBio(text) {
+    return text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+              .replace(/\n/g, '<br>')
+              .replace(/^- (.*?)$/gm, '• $1');
+}
+
+function copyToClipboard() {
+    navigator.clipboard.writeText(document.getElementById("bio-content").innerText)
+        .then(() => {
+            alert("Bio copiée !");
+            trackEvent('copy_to_clipboard');
+        })
+        .catch(err => showError("Erreur de copie : " + err));
+}
+
 function showError(message) {
     document.getElementById("bio-content").innerHTML = `
         <div class="bg-red-50 border-l-4 border-red-500 p-4">
             <div class="flex">
-                <div class="flex-shrink-0">
-                    <svg class="h-5 w-5 text-red-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
-                    </svg>
-                </div>
+                <div class="flex-shrink-0 text-red-500">⚠️</div>
                 <div class="ml-3">
                     <p class="text-sm text-red-700">${message}</p>
                 </div>
             </div>
-        </div>
-    `;
-    document.getElementById("result").classList.remove("hidden");
+        </div>`;
+}
+
+function trackGeneration(jobType) {
+    if (window.va) {
+        va.track('Bio Generated', {
+            jobType: jobType.toLowerCase(),
+            isMobile: /Mobi|Android/i.test(navigator.userAgent)
+        });
+    }
 }

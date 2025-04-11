@@ -5,10 +5,20 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Générateur de Bio LinkedIn</title>
     <meta name="description" content="Créez une bio LinkedIn professionnelle en 30 secondes gratuitement">
+    
+    <!-- Google Analytics -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-VOTRE_ID"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        gtag('config', 'G-VOTRE_ID');
+    </script>
+
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <link rel="icon" href="assets/favicon.ico" type="image/x-icon">
-    <link rel="shortcut icon" href="assets/favicon.ico" type="image/x-icon">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap');
         body {
@@ -21,52 +31,50 @@
         .gradient-btn:hover {
             background: linear-gradient(135deg, #2563eb 0%, #4f46e5 100%);
         }
+        .pro-badge {
+            background: linear-gradient(135deg, #f59e0b 0%, #ef4444 100%);
+        }
     </style>
 </head>
 <body class="min-h-screen">
     <div class="container mx-auto px-4 py-8 max-w-4xl">
-        <!-- Header avec logo -->
+        <!-- Header -->
         <header class="text-center mb-10">
             <div class="flex justify-center mb-4">
-                <img src="assets/logo1.png" alt="LinkedinBio Logo" class="h-16 w-auto">
+                <img src="assets/logo.png" alt="LinkedinBio Logo" class="h-16 w-auto">
             </div>
             <h1 class="text-4xl font-bold text-gray-800 mb-2">Générateur de Bio LinkedIn</h1>
             <p class="text-gray-600 text-lg">Créez une bio professionnelle en 30 secondes ⚡</p>
         </header>
 
-        <!-- Section principale -->
+        <!-- Main Content -->
         <main class="bg-white rounded-xl shadow-lg overflow-hidden">
             <div class="p-8">
-                <!-- Formulaire -->
+                <!-- Form -->
                 <div class="mb-8">
                     <div class="mb-6">
                         <label class="block text-gray-700 font-medium mb-2">Votre métier</label>
-                        <input id="job" type="text" placeholder="Ex: Développeur web, Designer UX..." 
-                               class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        <input id="job" type="text" placeholder="Ex: Développeur web" class="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500">
                     </div>
                     <div class="mb-6">
                         <label class="block text-gray-700 font-medium mb-2">Vos compétences</label>
-                        <input id="skills" type="text" placeholder="Ex: React, Figma, Marketing digital..." 
-                               class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        <input id="skills" type="text" placeholder="Ex: React, Node.js" class="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500">
                     </div>
-                    <button onclick="generateBio()" 
-                            class="w-full gradient-btn text-white font-semibold py-3 px-6 rounded-lg shadow-md hover:shadow-lg transition duration-300">
+                    <button onclick="generateBio()" class="w-full gradient-btn text-white py-3 px-6 rounded-lg shadow hover:shadow-lg transition">
                         Générer ma bio
                     </button>
                 </div>
 
-                <!-- Résultat -->
+                <!-- Results -->
                 <div id="result" class="hidden">
                     <div class="border-t pt-6">
-                        <h2 class="text-2xl font-semibold text-gray-800 mb-4">Votre bio LinkedIn</h2>
+                        <h2 class="text-2xl font-semibold mb-4">Votre bio LinkedIn</h2>
                         <div id="bio-content" class="bg-gray-50 p-6 rounded-lg mb-6"></div>
-                        <div class="flex space-x-4">
-                            <button onclick="exportToPDF()" 
-                                    class="flex-1 bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-lg transition">
-                                Télécharger en PDF
+                        <div class="flex flex-col sm:flex-row gap-4">
+                            <button onclick="exportToPDF()" class="flex-1 bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-lg transition">
+                                Télécharger PDF
                             </button>
-                            <button onclick="copyToClipboard()" 
-                                    class="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium py-2 px-4 rounded-lg transition">
+                            <button onclick="copyToClipboard()" class="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 py-2 px-4 rounded-lg transition">
                                 Copier le texte
                             </button>
                         </div>
@@ -75,17 +83,53 @@
             </div>
         </main>
 
+        <!-- Pro CTA -->
+        <div id="pro-cta" class="hidden mt-8 bg-indigo-50 border border-indigo-200 rounded-lg p-6 text-center">
+            <h3 class="font-medium text-indigo-800 mb-2">🚀 Passez à la version Pro</h3>
+            <p class="text-sm text-gray-600 mb-4">Débloquez des fonctionnalités exclusives :</p>
+            <ul class="grid grid-cols-2 gap-2 text-sm mb-4">
+                <li class="flex items-center">✓ PDF sans watermark</li>
+                <li class="flex items-center">✓ +10 templates</li>
+                <li class="flex items-center">✓ Historique illimité</li>
+                <li class="flex items-center">✓ Support prioritaire</li>
+            </ul>
+            <button onclick="showProModal()" class="gradient-btn text-white py-2 px-6 rounded-lg text-sm font-medium">
+                Voir les offres (à partir de 5€)
+            </button>
+        </div>
+
         <!-- Footer -->
-        <footer class="mt-16 text-center text-gray-500 text-sm">
-            <p>© 2023 LinkedIn Bio Generator | Conçu avec ❤️ pour les professionnels</p>
-            <div class="mt-2">
-                <a href="#" class="text-blue-600 hover:underline">Conditions d'utilisation</a>
-                <span class="mx-2">•</span>
-                <a href="#" class="text-blue-600 hover:underline">Politique de confidentialité</a>
-            </div>
+        <footer class="mt-12 text-center text-gray-500 text-sm">
+            <p>© 2023 LinkedIn Bio Generator | <a href="/privacy" class="text-blue-600 hover:underline">Confidentialité</a></p>
         </footer>
     </div>
 
-    <script src="app.js"></script>
+    <!-- Pro Modal (hidden by default) -->
+    <div id="pro-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white rounded-lg p-6 max-w-md mx-4">
+            <h3 class="text-xl font-bold mb-4">Version Professionnelle</h3>
+            <div class="pro-badge text-white text-xs font-bold py-1 px-2 rounded-full inline-block mb-2">
+                POPULAIRE
+            </div>
+            <p class="text-2xl font-bold mb-2">5€ <span class="text-base font-normal text-gray-500">/ mois</span></p>
+            <ul class="space-y-2 mb-6">
+                <li class="flex items-start">
+                    <svg class="h-5 w-5 text-green-500 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                    </svg>
+                    <span>Export PDF premium sans watermark</span>
+                </li>
+                <!-- Add more features -->
+            </ul>
+            <button onclick="startCheckout()" class="w-full gradient-btn text-white py-2 px-4 rounded-lg mb-2">
+                S'abonner maintenant
+            </button>
+            <button onclick="hideProModal()" class="text-sm text-gray-500 hover:text-gray-700">
+                Continuer en version gratuite
+            </button>
+        </div>
+    </div>
+    <script type="module" src="./app.js"></script>
+
 </body>
 </html>
