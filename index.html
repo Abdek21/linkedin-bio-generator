@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Générateur de Bio LinkedIn</title>
-    <meta name="description" content="Créez une bio LinkedIn professionnelle en 30 secondes gratuitement">
+    <title>Générateur de Bio LinkedIn Pro</title>
+    <meta name="description" content="Créez une bio LinkedIn professionnelle en 30 secondes - Outil gratuit avec options premium">
     
     <!-- Google Analytics -->
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-VOTRE_ID"></script>
@@ -12,128 +12,218 @@
         window.dataLayer = window.dataLayer || [];
         function gtag(){dataLayer.push(arguments);}
         gtag('js', new Date());
-        gtag('config', 'G-VOTRE_ID');
+        gtag('config', 'G-7GRH1XFH9W');
     </script>
 
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css">
     <link rel="icon" href="assets/favicon.ico" type="image/x-icon">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap');
+        :root {
+            --primary: #3b82f6;
+            --primary-dark: #2563eb;
+            --secondary: #6366f1;
+        }
         body {
             font-family: 'Poppins', sans-serif;
             background-color: #f8fafc;
+            min-height: 100vh;
         }
-        .gradient-btn {
-            background: linear-gradient(135deg, #3b82f6 0%, #6366f1 100%);
+        .gradient-bg {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
         }
-        .gradient-btn:hover {
-            background: linear-gradient(135deg, #2563eb 0%, #4f46e5 100%);
+        .gradient-bg:hover {
+            background: linear-gradient(135deg, var(--primary-dark) 0%, var(--secondary) 100%);
         }
         .pro-badge {
             background: linear-gradient(135deg, #f59e0b 0%, #ef4444 100%);
         }
+        .fade-in {
+            animation: fadeIn 0.3s ease-in-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
     </style>
 </head>
-<body class="min-h-screen">
-    <div class="container mx-auto px-4 py-8 max-w-4xl">
+<body class="min-h-screen flex flex-col">
+    <div class="container mx-auto px-4 py-8 max-w-4xl flex-grow">
         <!-- Header -->
-        <header class="text-center mb-10">
+        <header class="text-center mb-10 animate__animated animate__fadeIn">
             <div class="flex justify-center mb-4">
-                <img src="assets/logo1.png" alt="LinkedinBio Logo" class="h-16 w-auto">
+                <img src="assets/logo1.png" alt="LinkedinBio Pro" class="h-20 w-auto transition-transform hover:scale-105">
             </div>
-            <h1 class="text-4xl font-bold text-gray-800 mb-2">Générateur de Bio LinkedIn</h1>
-            <p class="text-gray-600 text-lg">Créez une bio professionnelle en 30 secondes ⚡</p>
+            <h1 class="text-4xl font-bold text-gray-800 mb-2 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                Générateur de Bio LinkedIn Pro
+            </h1>
+            <p class="text-gray-600 text-lg">Créez une bio percutante en <span class="font-semibold text-blue-600">30 secondes</span> ⚡</p>
         </header>
 
         <!-- Main Content -->
-        <main class="bg-white rounded-xl shadow-lg overflow-hidden">
+        <main class="bg-white rounded-xl shadow-xl overflow-hidden border border-gray-100">
             <div class="p-8">
-                <!-- Form -->
-                <div class="mb-8">
+                <!-- Form Section -->
+                <section class="mb-8">
                     <div class="mb-6">
-                        <label class="block text-gray-700 font-medium mb-2">Votre métier</label>
-                        <input id="job" type="text" placeholder="Ex: Développeur web" class="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500">
+                        <label for="job" class="block text-gray-700 font-medium mb-2 flex items-center">
+                            <svg class="w-5 h-5 mr-2 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
+                            </svg>
+                            Votre métier
+                        </label>
+                        <input id="job" type="text" placeholder="Ex: Développeur Full Stack" 
+                               class="w-full p-4 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-300 focus:border-blue-300 transition">
                     </div>
                     <div class="mb-6">
-                        <label class="block text-gray-700 font-medium mb-2">Vos compétences</label>
-                        <input id="skills" type="text" placeholder="Ex: React, Node.js" class="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500">
+                        <label for="skills" class="block text-gray-700 font-medium mb-2 flex items-center">
+                            <svg class="w-5 h-5 mr-2 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path>
+                            </svg>
+                            Vos compétences clés
+                        </label>
+                        <input id="skills" type="text" placeholder="Ex: React, Node.js, UX Design" 
+                               class="w-full p-4 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-300 focus:border-blue-300 transition">
                     </div>
-                    <button onclick="generateBio()" class="w-full gradient-btn text-white py-3 px-6 rounded-lg shadow hover:shadow-lg transition">
-                        Générer ma bio
+                    <button id="generateBtn" class="w-full gradient-bg text-white font-semibold py-4 px-6 rounded-lg shadow-lg hover:shadow-xl transition-all transform hover:-translate-y-0.5">
+                        Générer ma bio professionnelle
                     </button>
-                </div>
+                </section>
 
-                <!-- Results -->
-                <div id="result" class="hidden">
-                    <div class="border-t pt-6">
-                        <h2 class="text-2xl font-semibold mb-4">Votre bio LinkedIn</h2>
-                        <div id="bio-content" class="bg-gray-50 p-6 rounded-lg mb-6"></div>
+                <!-- Results Section -->
+                <section id="result" class="hidden fade-in">
+                    <div class="border-t border-gray-100 pt-8">
+                        <div class="flex justify-between items-center mb-6">
+                            <h2 class="text-2xl font-semibold text-gray-800 flex items-center">
+                                <svg class="w-6 h-6 mr-2 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                                </svg>
+                                Votre bio optimisée
+                            </h2>
+                            <span id="charCount" class="text-sm text-gray-500"></span>
+                        </div>
+                        
+                        <div id="bio-content" class="bg-gray-50 p-6 rounded-lg mb-6 border border-gray-200 min-h-48"></div>
+                        
                         <div class="flex flex-col sm:flex-row gap-4">
-                            <button onclick="exportToPDF()" class="flex-1 bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-lg transition">
+                            <button id="pdfBtn" class="flex-1 bg-green-600 hover:bg-green-700 text-white font-medium py-3 px-6 rounded-lg transition flex items-center justify-center">
+                                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10"></path>
+                                </svg>
                                 Télécharger PDF
                             </button>
-                            <button onclick="copyToClipboard()" class="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 py-2 px-4 rounded-lg transition">
+                            <button id="copyBtn" class="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-800 font-medium py-3 px-6 rounded-lg transition flex items-center justify-center">
+                                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"></path>
+                                </svg>
                                 Copier le texte
                             </button>
                         </div>
                     </div>
-                </div>
+                </section>
             </div>
         </main>
 
-        <!-- Pro CTA -->
-        <div id="pro-cta" class="hidden mt-8 bg-indigo-50 border border-indigo-200 rounded-lg p-6 text-center">
-            <h3 class="font-medium text-indigo-800 mb-2">🚀 Passez à la version Pro</h3>
-            <p class="text-sm text-gray-600 mb-4">Débloquez des fonctionnalités exclusives :</p>
-            <ul class="grid grid-cols-2 gap-2 text-sm mb-4">
-                <li class="flex items-center">✓ PDF sans watermark</li>
-                <li class="flex items-center">✓ +10 templates</li>
-                <li class="flex items-center">✓ Historique illimité</li>
-                <li class="flex items-center">✓ Support prioritaire</li>
-            </ul>
-            <button onclick="showProModal()" class="gradient-btn text-white py-2 px-6 rounded-lg text-sm font-medium">
-                Voir les offres (à partir de 5€)
-            </button>
-        </div>
-
-        <!-- Footer -->
-        <footer class="mt-12 text-center text-gray-500 text-sm">
-            <p>© 2023 LinkedIn Bio Generator | <a href="/privacy" class="text-blue-600 hover:underline">Confidentialité</a></p>
-        </footer>
-    </div>
-
-    <!-- Pro Modal (hidden by default) -->
-    <div id="pro-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div class="bg-white rounded-lg p-6 max-w-md mx-4">
-            <h3 class="text-xl font-bold mb-4">Version Professionnelle</h3>
-            <div class="pro-badge text-white text-xs font-bold py-1 px-2 rounded-full inline-block mb-2">
-                POPULAIRE
+        <!-- Pro CTA Section -->
+        <section id="pro-cta" class="hidden mt-8 bg-gradient-to-r from-indigo-50 to-blue-50 border border-indigo-100 rounded-xl p-6 text-center animate__animated animate__fadeInUp">
+            <h3 class="text-xl font-bold text-indigo-800 mb-3">🚀 Passez Expert</h3>
+            <p class="text-gray-600 mb-4 max-w-2xl mx-auto">Déverrouillez tout le potentiel de votre profil LinkedIn avec la version Pro</p>
+            
+            <div class="grid md:grid-cols-3 gap-4 mb-6">
+                <div class="bg-white p-4 rounded-lg border border-gray-200">
+                    <h4 class="font-semibold text-indigo-700 mb-2">✓ PDF Premium</h4>
+                    <p class="text-sm text-gray-600">Sans watermark et design pro</p>
+                </div>
+                <div class="bg-white p-4 rounded-lg border border-gray-200">
+                    <h4 class="font-semibold text-indigo-700 mb-2">✓ +20 Templates</h4>
+                    <p class="text-sm text-gray-600">Pour tous les secteurs</p>
+                </div>
+                <div class="bg-white p-4 rounded-lg border border-gray-200">
+                    <h4 class="font-semibold text-indigo-700 mb-2">✓ Support Prioritaire</h4>
+                    <p class="text-sm text-gray-600">Réponse sous 24h</p>
+                </div>
             </div>
-            <p class="text-2xl font-bold mb-2">5€ <span class="text-base font-normal text-gray-500">/ mois</span></p>
-            <ul class="space-y-2 mb-6">
-                <li class="flex items-start">
-                    <svg class="h-5 w-5 text-green-500 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                    </svg>
-                    <span>Export PDF premium sans watermark</span>
-                </li>
-                <!-- Add more features -->
-            </ul>
-            <button onclick="startCheckout()" class="w-full gradient-btn text-white py-2 px-4 rounded-lg mb-2">
-                S'abonner maintenant
+            
+            <button id="proBtn" class="gradient-bg text-white font-semibold py-3 px-8 rounded-full shadow-md hover:shadow-lg transition">
+                Découvrir la version Pro - 5€/mois
             </button>
-            <button onclick="hideProModal()" class="text-sm text-gray-500 hover:text-gray-700">
-                Continuer en version gratuite
-            </button>
+        </section>
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-white border-t border-gray-100 py-6 mt-12">
+        <div class="container mx-auto px-4 text-center">
+            <p class="text-gray-500 text-sm mb-2">
+                © 2023 LinkedIn Bio Generator Pro | 
+                <a href="/privacy" class="text-blue-600 hover:underline">Confidentialité</a> | 
+                <a href="/terms" class="text-blue-600 hover:underline">Conditions</a>
+            </p>
+            <p class="text-xs text-gray-400">Outils développé avec ❤️ pour les professionnels</p>
+        </div>
+    </footer>
+
+    <!-- Pro Modal -->
+    <div id="pro-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-xl shadow-2xl max-w-md w-full animate__animated animate__fadeInUp">
+            <div class="p-6">
+                <div class="flex justify-between items-start mb-4">
+                    <h3 class="text-2xl font-bold text-gray-800">Version Professionnelle</h3>
+                    <button id="closeModalBtn" class="text-gray-400 hover:text-gray-600">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                </div>
+                
+                <div class="pro-badge text-white text-xs font-bold py-1 px-3 rounded-full inline-block mb-4">
+                    LE PLUS POPULAIRE
+                </div>
+                
+                <div class="bg-blue-50 rounded-lg p-4 mb-6">
+                    <p class="text-3xl font-bold text-gray-800 mb-1">5€ <span class="text-base font-normal text-gray-500">/ mois</span></p>
+                    <p class="text-gray-600 text-sm">Facturé mensuellement, annulable à tout moment</p>
+                </div>
+                
+                <ul class="space-y-3 mb-8">
+                    <li class="flex items-start">
+                        <svg class="w-5 h-5 text-green-500 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                        </svg>
+                        <span>Générations illimitées</span>
+                    </li>
+                    <li class="flex items-start">
+                        <svg class="w-5 h-5 text-green-500 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                        </svg>
+                        <span>Export PDF premium sans watermark</span>
+                    </li>
+                    <li class="flex items-start">
+                        <svg class="w-5 h-5 text-green-500 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                        </svg>
+                        <span>Accès à tous les templates professionnels</span>
+                    </li>
+                </ul>
+                
+                <button id="checkoutBtn" class="w-full gradient-bg text-white font-semibold py-3 px-6 rounded-lg shadow hover:shadow-lg transition mb-3">
+                    Commencer l'essai gratuit (7 jours)
+                </button>
+                
+                <p class="text-center text-gray-500 text-xs">Aucune carte requise pour l'essai</p>
+            </div>
         </div>
     </div>
 
+    <!-- Vercel Analytics -->
     <script>
         window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };
-      </script>
-      <script defer src="/_vercel/insights/script.js"></script>
+    </script>
+    <script defer src="/_vercel/insights/script.js"></script>
+
+    <!-- App JS -->
     <script src="app.js"></script>
 </body>
 </html>
