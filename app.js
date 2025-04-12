@@ -3,8 +3,8 @@ const CONFIG = {
     MAX_FREE_GENERATIONS: 3,
     PRO_PRICE: 5,
     ANALYTICS_ID: 'G-7GRH1XFH9W',
-    STRIPE_PUBLIC_KEY: process.env.STRIPE_PUBLIC_KEY,
-    STRIPE_PRICE_ID: process.env.STRIPE_PRICE_ID
+    STRIPE_PUBLIC_KEY: process.env.NEXT_PUBLIC_STRIPE_PUBLIC_KEY,
+    STRIPE_PRICE_ID: process.env.NEXT_PUBLIC_STRIPE_PRICE_ID
 };
 
 
@@ -248,6 +248,11 @@ function hideProModal() {
 }
 
 async function startCheckout() {
+
+    if (!state.stripe) {
+        showErrorInModal("Le système de paiement n'est pas disponible");
+        return;
+    }
     try {
         showLoadingInModal();
         
@@ -267,7 +272,7 @@ async function startCheckout() {
         if (!response.ok) throw new Error(await response.text());
 
         const { id } = await response.json();
-        const result = await stripe.redirectToCheckout({ sessionId: id });
+        const result = await state.stripe.redirectToCheckout({ sessionId: id });
 
         if (result.error) throw result.error;
     } catch (error) {
