@@ -1,10 +1,10 @@
-// Configuration avec valeurs par défaut (à remplacer par vos vraies valeurs)
+// Configuration avec vos clés Stripe
 const CONFIG = {
     MAX_FREE_GENERATIONS: 3,
     PRO_PRICE: 5,
     ANALYTICS_ID: 'G-7GRH1XFH9W',
-    STRIPE_PUBLIC_KEY: 'pk_test_51RBtzaR7rjIx88O1hAXt7EJla6Ri8fiODE467lE90STOFOEZuYPLSgJ8NY4lUg2NPBKBDfaRnojpTRezoGub7GGa00tqv7mUgk', // À remplacer
-    STRIPE_PRICE_ID: 'price_1RBvioR7rjIx88O162hbGlvC' // À remplacer
+    STRIPE_PUBLIC_KEY: 'pk_test_51RBtzaR7rjIx88O1hAXt7EJla6Ri8fiODE467lE90STOFOEZuYPLSgJ8NY4lUg2NPBKBDfaRnojpTRezoGub7GGa00tqv7mUgk',
+    STRIPE_PRICE_ID: 'price_1RBvioR7rjIx88O162hbGlvC'
 };
 
 // Éléments DOM
@@ -28,38 +28,46 @@ const DOM = {
 const state = {
     freeGenerations: parseInt(localStorage.getItem('freeGenerations')) || 0,
     isPro: localStorage.getItem('isPro') === 'true',
-    stripe: null
+    stripe: null,
+    adBlockDetected: false
 };
 
 // Initialisation
 document.addEventListener('DOMContentLoaded', init);
 
 async function init() {
+    // Détection AdBlock avant toute initialisation
+    state.adBlockDetected = await detectAdBlock();
+    if (state.adBlockDetected) {
+        showAdblockWarning();
+        return;
+    }
+
     try {
         // Initialisation Stripe
         state.stripe = Stripe(CONFIG.STRIPE_PUBLIC_KEY);
         
         setupEventListeners();
         
-        // Désactive la vérification Pro si l'endpoint n'existe pas
+        // Vérification statut Pro (tolérante aux erreurs)
         try {
             await checkProStatus();
         } catch (e) {
-            console.warn("Endpoint check-pro-status non disponible");
+            console.warn("Vérification statut Pro ignorée:", e);
             state.isPro = localStorage.getItem('isPro') === 'true';
         }
         
-        // Vérifie si retour de paiement réussi
+        // Gestion retour de paiement
         const urlParams = new URLSearchParams(window.location.search);
         if (urlParams.get('payment_success') === 'true') {
-            showToast("Paiement réussi ! Vous avez maintenant accès à la version Pro.");
+            showToast("Paiement réussi ! Accès Pro activé.");
             state.isPro = true;
             localStorage.setItem('isPro', 'true');
             history.replaceState(null, '', window.location.pathname);
         }
     } catch (error) {
-        console.error("Initialisation error:", error);
-        showError("Erreur d'initialisation: " + error.message);
+        console.error("Erreur initialisation:", error);
+        showError("Erreur lors du chargement de l'application");
     }
 }
 
@@ -73,8 +81,60 @@ function setupEventListeners() {
     DOM.bioContent.addEventListener('input', updateCharCount);
 }
 
+// Détection AdBlock améliorée
+async function detectAdBlock() {
+    try {
+        const testUrl = 'https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js';
+        const response = await fetch(testUrl, {
+            method: 'HEAD',
+            mode: 'no-cors',
+            cache: 'no-store'
+        });
+        return false;
+    } catch (e) {
+        console.log("AdBlock détecté");
+        return true;
+    }
+}
+
+function showAdblockWarning() {
+    const warning = document.createElement('div');
+    warning.innerHTML = `
+    <div class="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-[9999] p-4">
+        <div class="bg-white rounded-xl p-6 max-w-md w-full animate-bounce">
+            <div class="text-center">
+                <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 mb-4">
+                    <svg class="h-6 w-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                    </svg>
+                </div>
+                <h3 class="text-lg font-medium text-gray-900 mb-2">Blocage détecté</h3>
+                <div class="text-sm text-gray-500 mb-6">
+                    <p class="mb-3">Votre bloqueur de publicités empêche le système de paiement de fonctionner.</p>
+                    <ol class="list-decimal list-inside space-y-1 text-left">
+                        <li>Cliquez sur l'icône <span class="bg-gray-200 px-1 rounded">🛡️</span> dans votre navigateur</li>
+                        <li>Sélectionnez "Désactiver pour ce site"</li>
+                        <li>Actualisez la page (F5)</li>
+                    </ol>
+                </div>
+                <div class="px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+                    <button type="button" onclick="location.reload()" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-red-600 text-base font-medium text-white hover:bg-red-700 focus:outline-none sm:ml-3 sm:w-auto sm:text-sm">
+                        J'ai désactivé le bloqueur
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>`;
+    document.body.appendChild(warning);
+}
+
 // Gestion de la génération de bio
 async function handleBioGeneration() {
+    if (state.adBlockDetected) {
+        showAdblockWarning();
+        return;
+    }
+
     const job = DOM.jobInput.value.trim();
     const skills = DOM.skillsInput.value.trim();
 
@@ -110,7 +170,8 @@ async function generateBio(job, skills) {
         const response = await fetch("/api/generate", {
             method: "POST",
             headers: { 
-                "Content-Type": "application/json"
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${localStorage.getItem('pro_token') || ''}`
             },
             body: JSON.stringify({ 
                 job, 
@@ -119,6 +180,10 @@ async function generateBio(job, skills) {
                 isPro: state.isPro
             })
         });
+
+        if (response.status === 402) {
+            throw new Error("Upgrade to Pro required");
+        }
 
         if (!response.ok) {
             const errorData = await response.json().catch(() => ({}));
@@ -216,7 +281,11 @@ function copyToClipboard() {
 // Version Pro
 async function checkProStatus() {
     try {
-        const response = await fetch('/api/check-pro-status');
+        const response = await fetch('/api/check-pro-status', {
+            headers: {
+                'Authorization': `Bearer ${localStorage.getItem('auth_token') || ''}`
+            }
+        });
         
         if (response.ok) {
             const data = await response.json();
@@ -225,7 +294,7 @@ async function checkProStatus() {
         }
     } catch (error) {
         console.error("Pro status check failed:", error);
-        throw error;
+        state.isPro = localStorage.getItem('isPro') === 'true';
     }
 }
 
@@ -252,6 +321,11 @@ function hideProModal() {
 }
 
 async function startCheckout() {
+    if (state.adBlockDetected) {
+        showErrorInModal("Désactivez votre bloqueur de publicités pour procéder au paiement");
+        return;
+    }
+
     try {
         showLoadingInModal();
         
@@ -275,8 +349,8 @@ async function startCheckout() {
 
         if (result.error) throw result.error;
     } catch (error) {
-        showErrorInModal(error.message || "Erreur lors du paiement");
         console.error("Checkout error:", error);
+        showErrorInModal(error.message || "Erreur lors du paiement");
     } finally {
         resetCheckoutButton();
     }
@@ -335,48 +409,14 @@ function showToast(message) {
     }, 3000);
 }
 
-// Version simplifiée de trackEvent pour éviter les blocages
+// Analytics simplifiés pour éviter les blocages
 function trackEvent(action, params = {}) {
-    console.log('[Event]', action, params);
-}
-
-// Détection AdBlock
-function checkAdBlocker() {
-    return new Promise((resolve) => {
-        const ad = document.createElement('div');
-        ad.innerHTML = '&nbsp;';
-        ad.className = 'adsbox';
-        document.body.appendChild(ad);
-        
-        window.setTimeout(() => {
-            const isBlocked = ad.offsetHeight === 0;
-            document.body.removeChild(ad);
-            resolve(isBlocked);
-        }, 100);
-    });
-}
-
-function showAdblockWarning() {
-    const warning = document.createElement('div');
-    warning.innerHTML = `
-    <div class="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-[9999] p-4">
-        <div class="bg-white rounded-xl p-6 max-w-md w-full">
-            <div class="text-center">
-                <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 mb-4">
-                    <svg class="h-6 w-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
-                    </svg>
-                </div>
-                <h3 class="text-lg font-medium text-gray-900 mb-2">Blocage détecté</h3>
-                <div class="text-sm text-gray-500 mb-6">
-                    <p>Votre bloqueur de publicités empêche certaines fonctionnalités.</p>
-                    <p class="mt-2">Veuillez le désactiver pour ce site.</p>
-                </div>
-                <button onclick="location.reload()" class="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700">
-                    J'ai désactivé le bloqueur
-                </button>
-            </div>
-        </div>
-    </div>`;
-    document.body.appendChild(warning);
+    if (window.gtag) {
+        gtag('event', action, {
+            ...params,
+            free_uses: state.freeGenerations,
+            is_pro: state.isPro
+        });
+    }
+    console.log('[Analytics]', action, params);
 }
