@@ -1,13 +1,11 @@
-// Configuration
+// Configuration avec valeurs par défaut (à remplacer par vos vraies valeurs)
 const CONFIG = {
     MAX_FREE_GENERATIONS: 3,
     PRO_PRICE: 5,
     ANALYTICS_ID: 'G-7GRH1XFH9W',
-    STRIPE_PUBLIC_KEY: process.env.NEXT_PUBLIC_STRIPE_PUBLIC_KEY,
-    STRIPE_PRICE_ID: process.env.NEXT_PUBLIC_STRIPE_PRICE_ID
+    STRIPE_PUBLIC_KEY: 'pk_test_51RBtzaR7rjIx88O1hAXt7EJla6Ri8fiODE467lE90STOFOEZuYPLSgJ8NY4lUg2NPBKBDfaRnojpTRezoGub7GGa00tqv7mUgk', // À remplacer
+    STRIPE_PRICE_ID: 'price_1RBvioR7rjIx88O162hbGlvC' // À remplacer
 };
-
-
 
 // Éléments DOM
 const DOM = {
@@ -37,8 +35,17 @@ const state = {
 document.addEventListener('DOMContentLoaded', init);
 
 async function init() {
+    if (await checkAdBlocker()) {
+        showAdblockWarning();
+        return;
+    }
+
     try {
-        state.stripe = Stripe(CONFIG.STRIPE_PUBLIC_KEY);
+        // Initialisation Stripe
+        if (!state.stripe) {
+            state.stripe = Stripe(CONFIG.STRIPE_PUBLIC_KEY);
+        }
+
         setupEventListeners();
         await checkProStatus();
         
@@ -52,6 +59,7 @@ async function init() {
         }
     } catch (error) {
         console.error("Initialisation error:", error);
+        showError("Erreur d'initialisation: " + error.message);
     }
 }
 
@@ -88,6 +96,7 @@ async function handleBioGeneration() {
         
         checkForProOffer();
     } catch (error) {
+        console.error("Erreur génération:", error);
         showError(error.message);
         trackEvent('generation_error', { error: error.message });
     }
@@ -117,7 +126,7 @@ async function generateBio(job, skills) {
         }
 
         if (!response.ok) {
-            const errorData = await response.json();
+            const errorData = await response.json().catch(() => ({}));
             throw new Error(errorData.error || "Erreur lors de la génération");
         }
 
@@ -237,6 +246,10 @@ function checkForProOffer() {
 }
 
 function showProModal() {
+    if (!state.stripe) {
+        showErrorInModal("Le système de paiement n'est pas disponible");
+        return;
+    }
     DOM.proModal.classList.remove('hidden');
     document.body.style.overflow = 'hidden';
     trackEvent('pro_modal_opened');
@@ -248,11 +261,6 @@ function hideProModal() {
 }
 
 async function startCheckout() {
-
-    if (!state.stripe) {
-        showErrorInModal("Le système de paiement n'est pas disponible");
-        return;
-    }
     try {
         showLoadingInModal();
         
@@ -351,43 +359,20 @@ function trackEvent(action, params = {}) {
     console.log('[Analytics]', action, params);
 }
 
-
-// Dans app.js
-// Modifiez la fonction startCheckout()
-async function startCheckout() {
-    if (await checkAdBlocker()) {
-        showAdblockWarning();
-        return;
-    }
-
+// Détection AdBlock
+async function checkAdBlocker() {
     try {
-        showLoadingInModal();
-        const response = await fetch('/api/create-checkout-session', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                priceId: CONFIG.STRIPE_PRICE_ID,
-                successUrl: `${window.location.origin}/?payment_success=true`,
-                cancelUrl: window.location.origin
-            })
+        await fetch('https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js', { 
+            method: 'HEAD',
+            mode: 'no-cors'
         });
-
-        if (!response.ok) throw new Error(await response.text());
-        
-        const { id } = await response.json();
-        const result = await state.stripe.redirectToCheckout({ sessionId: id });
-
-        if (result.error) throw result.error;
-    } catch (error) {
-        console.error("Checkout error:", error);
-        showErrorInModal(error.message || "Erreur lors du paiement");
-    } finally {
-        resetCheckoutButton();
+        return false;
+    } catch {
+        return true;
     }
 }
-  
-  function showAdblockWarning() {
-    // Crée un overlay non ignorable
+
+function showAdblockWarning() {
     const warning = document.createElement('div');
     warning.innerHTML = `
     <div class="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-[9999] p-4">
@@ -398,9 +383,9 @@ async function startCheckout() {
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
                     </svg>
                 </div>
-                <h3 class="text-lg font-medium text-gray-900 mb-2">Paiement bloqué</h3>
+                <h3 class="text-lg font-medium text-gray-900 mb-2">Blocage détecté</h3>
                 <div class="text-sm text-gray-500 mb-6">
-                    <p class="mb-3">Votre bloqueur de publicités empêche le système de paiement de fonctionner.</p>
+                    <p class="mb-3">Votre bloqueur de publicités empêche le bon fonctionnement de l'application.</p>
                     <ol class="list-decimal list-inside space-y-1 text-left">
                         <li>Cliquez sur l'icône <span class="bg-gray-200 px-1 rounded">🛡️</span> dans votre navigateur</li>
                         <li>Sélectionnez "Désactiver pour ce site"</li>

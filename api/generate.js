@@ -2,7 +2,11 @@ import Stripe from 'stripe';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
-export default async (req, res) => {
+export default async function handler(req, res) {
+    if (req.method !== 'POST') {
+        return res.status(405).json({ error: 'Method not allowed' });
+    }
+
     // Vérification de la clé API
     if (!process.env.OPENAI_KEY) {
         return res.status(500).json({ 
@@ -22,40 +26,10 @@ export default async (req, res) => {
             });
         }
 
-        // Vérification du statut Pro si nécessaire
-        const freeUses = await getFreeUses(req); // À implémenter selon votre système
-        if (!isPro && freeUses >= process.env.MAX_FREE_GENERATIONS) {
-            return res.status(402).json({ 
-                error: "Upgrade to Pro required",
-                upgradeUrl: "/pro"
-            });
-        }
-
-        // Construction du prompt amélioré
-        const prompt = `En tant qu'expert LinkedIn, crée une bio premium pour un ${job} spécialisé en ${skills}.
-        
-**Exigences :**
-- Ton: ${tone} (professionnel, moderne ou technique)
-- Longueur: 150-250 mots
-- Structure claire avec paragraphes distincts
-- Mise en forme markdown avec **bold** et listes
-- Inclure si pertinent :
-  * Réalisations concrètes
-  * Technologies maîtrisées
-  * Valeur ajoutée unique
-  * Appel à l'action
-
-**Exemple de format :**
-## [Titre accrocheur]
-
-[Description professionnelle en 2-3 phrases]
-
-**Expertise clé :**
-- Compétence 1
-- Compétence 2
-- Compétence 3
-
-[Autres sections selon pertinence]`;
+        // Construction du prompt
+        const prompt = `Crée une bio LinkedIn professionnelle pour un ${job} avec ces compétences: ${skills}.
+        Ton: ${tone}
+        Format: Markdown avec sections claires`;
 
         const response = await fetch("https://api.openai.com/v1/chat/completions", {
             method: "POST",
@@ -64,19 +38,16 @@ export default async (req, res) => {
                 "Content-Type": "application/json"
             },
             body: JSON.stringify({
-                model: "gpt-4", // ou "gpt-3.5-turbo" si 4 n'est pas disponible
+                model: "gpt-3.5-turbo",
                 messages: [{
                     role: "system",
-                    content: "Tu es un expert en création de bios LinkedIn professionnelles et persuasives. Utilise un style clair et structuré avec markdown."
+                    content: "Tu es un expert en création de bios LinkedIn professionnelles."
                 }, {
                     role: "user",
                     content: prompt
                 }],
                 temperature: 0.7,
-                max_tokens: 600,
-                top_p: 1,
-                frequency_penalty: 0,
-                presence_penalty: 0
+                max_tokens: 500
             })
         });
 
@@ -104,10 +75,4 @@ export default async (req, res) => {
             details: error.message 
         });
     }
-};
-
-// Fonction utilitaire pour suivre les utilisations gratuites
-async function getFreeUses(req) {
-    // Implémentez votre logique de suivi (DB, cookies, etc.)
-    return 0; // Exemple basique
 }
