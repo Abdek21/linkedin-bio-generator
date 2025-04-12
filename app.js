@@ -7,12 +7,7 @@ const CONFIG = {
     STRIPE_PRICE_ID: process.env.STRIPE_PRICE_ID
 };
 
-// Initialisation Stripe
-const stripe = Stripe(CONFIG.STRIPE_PUBLIC_KEY ,{
-    betas: ['disable_analytics_v1'], // Désactive les trackers
-    apiVersion: '2023-08-16', // Toujours utiliser la dernière version
-    locale: 'fr' // Adapte l'interface
-});
+
 
 // Éléments DOM
 const DOM = {
@@ -353,55 +348,67 @@ function trackEvent(action, params = {}) {
 
 
 // Dans app.js
-async function checkAdBlocker() {
-    try {
-      // Teste une requête vers un domaine Stripe souvent bloqué
-      await fetch('https://r.stripe.com/health', {
-        method: 'HEAD', // Méthode légère
-        mode: 'no-cors',
-        cache: 'no-store'
-      });
-      return false; // Pas de bloqueur détecté
-    } catch {
-      return true; // Bloqueur détecté
-    }
-  }
-  
-  // Utilisation au chargement de la page
-  document.addEventListener('DOMContentLoaded', async () => {
+// Modifiez la fonction startCheckout()
+async function startCheckout() {
     if (await checkAdBlocker()) {
-      showAdblockWarning();
+        showAdblockWarning();
+        return;
     }
-  });
+
+    try {
+        showLoadingInModal();
+        const response = await fetch('/api/create-checkout-session', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                priceId: CONFIG.STRIPE_PRICE_ID,
+                successUrl: `${window.location.origin}/?payment_success=true`,
+                cancelUrl: window.location.origin
+            })
+        });
+
+        if (!response.ok) throw new Error(await response.text());
+        
+        const { id } = await response.json();
+        const result = await state.stripe.redirectToCheckout({ sessionId: id });
+
+        if (result.error) throw result.error;
+    } catch (error) {
+        console.error("Checkout error:", error);
+        showErrorInModal(error.message || "Erreur lors du paiement");
+    } finally {
+        resetCheckoutButton();
+    }
+}
   
   function showAdblockWarning() {
-    const warningHTML = `
-      <div class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4">
-        <div class="bg-white rounded-lg p-6 max-w-md w-full">
-          <h3 class="text-xl font-bold text-red-600 mb-3">Attention requis</h3>
-          <p class="mb-4">Votre bloqueur de publicités empêche le système de paiement de fonctionner.</p>
-          
-          <div class="space-y-3 mb-5">
-            <div class="flex items-start">
-              <span class="mr-2">🔹</span>
-              <p>Cliquez sur l'icône <img src="assets/adblock-icon.png" class="inline-block w-5 h-5"> dans votre barre d'outils</p>
+    // Crée un overlay non ignorable
+    const warning = document.createElement('div');
+    warning.innerHTML = `
+    <div class="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-[9999] p-4">
+        <div class="bg-white rounded-xl p-6 max-w-md w-full animate-bounce">
+            <div class="text-center">
+                <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 mb-4">
+                    <svg class="h-6 w-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                    </svg>
+                </div>
+                <h3 class="text-lg font-medium text-gray-900 mb-2">Paiement bloqué</h3>
+                <div class="text-sm text-gray-500 mb-6">
+                    <p class="mb-3">Votre bloqueur de publicités empêche le système de paiement de fonctionner.</p>
+                    <ol class="list-decimal list-inside space-y-1 text-left">
+                        <li>Cliquez sur l'icône <span class="bg-gray-200 px-1 rounded">🛡️</span> dans votre navigateur</li>
+                        <li>Sélectionnez "Désactiver pour ce site"</li>
+                        <li>Actualisez la page (F5)</li>
+                    </ol>
+                </div>
+                <div class="px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+                    <button type="button" onclick="location.reload()" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-red-600 text-base font-medium text-white hover:bg-red-700 focus:outline-none sm:ml-3 sm:w-auto sm:text-sm">
+                        J'ai désactivé le bloqueur
+                    </button>
+                </div>
             </div>
-            <div class="flex items-start">
-              <span class="mr-2">🔹</span>
-              <p>Sélectionnez <strong>"Désactiver pour ce site"</strong></p>
-            </div>
-            <div class="flex items-start">
-              <span class="mr-2">🔹</span>
-              <p>Actualisez la page avec <kbd>F5</kbd></p>
-            </div>
-          </div>
-  
-          <button onclick="this.closest('div').remove()" 
-                  class="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded">
-            J'ai désactivé mon bloqueur
-          </button>
         </div>
-      </div>
-    `;
-    document.body.insertAdjacentHTML('beforeend', warningHTML);
-  }
+    </div>`;
+    document.body.appendChild(warning);
+}
