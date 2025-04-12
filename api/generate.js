@@ -1,7 +1,10 @@
+import Stripe from 'stripe';
+
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+
 export default async (req, res) => {
     // Vérification de la clé API
     if (!process.env.OPENAI_KEY) {
-        console.error("Erreur: OPENAI_KEY non définie");
         return res.status(500).json({ 
             error: "Configuration serveur invalide",
             details: "La clé API OpenAI n'est pas configurée"
@@ -9,7 +12,7 @@ export default async (req, res) => {
     }
 
     try {
-        const { job, skills, tone = "professionnel" } = req.body;
+        const { job, skills, tone = "professional", isPro = false } = req.body;
         
         // Validation des entrées
         if (!job || !skills) {
@@ -19,14 +22,40 @@ export default async (req, res) => {
             });
         }
 
-        // Construction du prompt
-        const prompt = `Tu es un expert en rédaction de profils LinkedIn. 
-Crée 3 versions de bio pour un ${job} spécialisé en ${skills} :
-1. Version professionnelle (ton formel)
-2. Version créative (ton moderne avec emojis)
-3. Version technique (focus compétences)
+        // Vérification du statut Pro si nécessaire
+        const freeUses = await getFreeUses(req); // À implémenter selon votre système
+        if (!isPro && freeUses >= process.env.MAX_FREE_GENERATIONS) {
+            return res.status(402).json({ 
+                error: "Upgrade to Pro required",
+                upgradeUrl: "/pro"
+            });
+        }
 
-Chaque version doit faire 80-100 mots maximum.`;
+        // Construction du prompt amélioré
+        const prompt = `En tant qu'expert LinkedIn, crée une bio premium pour un ${job} spécialisé en ${skills}.
+        
+**Exigences :**
+- Ton: ${tone} (professionnel, moderne ou technique)
+- Longueur: 150-250 mots
+- Structure claire avec paragraphes distincts
+- Mise en forme markdown avec **bold** et listes
+- Inclure si pertinent :
+  * Réalisations concrètes
+  * Technologies maîtrisées
+  * Valeur ajoutée unique
+  * Appel à l'action
+
+**Exemple de format :**
+## [Titre accrocheur]
+
+[Description professionnelle en 2-3 phrases]
+
+**Expertise clé :**
+- Compétence 1
+- Compétence 2
+- Compétence 3
+
+[Autres sections selon pertinence]`;
 
         const response = await fetch("https://api.openai.com/v1/chat/completions", {
             method: "POST",
@@ -35,33 +64,38 @@ Chaque version doit faire 80-100 mots maximum.`;
                 "Content-Type": "application/json"
             },
             body: JSON.stringify({
-                model: "gpt-3.5-turbo",
+                model: "gpt-4", // ou "gpt-3.5-turbo" si 4 n'est pas disponible
                 messages: [{
                     role: "system",
-                    content: "Tu es un assistant qui crée des bios LinkedIn percutantes."
+                    content: "Tu es un expert en création de bios LinkedIn professionnelles et persuasives. Utilise un style clair et structuré avec markdown."
                 }, {
                     role: "user",
                     content: prompt
                 }],
                 temperature: 0.7,
-                max_tokens: 500,
+                max_tokens: 600,
                 top_p: 1,
                 frequency_penalty: 0,
                 presence_penalty: 0
             })
         });
 
-        const data = await response.json();
-
         if (!response.ok) {
-            console.error("Erreur OpenAI:", data);
+            const errorData = await response.json();
+            console.error("Erreur OpenAI:", errorData);
             return res.status(500).json({ 
                 error: "Erreur OpenAI",
-                details: data.error?.message || "Erreur inconnue de l'API"
+                details: errorData.error?.message
             });
         }
 
-        res.status(200).json(data);
+        const data = await response.json();
+        const bioContent = data.choices[0].message.content;
+
+        res.status(200).json({
+            bio: bioContent,
+            isPro: isPro
+        });
 
     } catch (error) {
         console.error("Erreur API:", error);
@@ -71,3 +105,9 @@ Chaque version doit faire 80-100 mots maximum.`;
         });
     }
 };
+
+// Fonction utilitaire pour suivre les utilisations gratuites
+async function getFreeUses(req) {
+    // Implémentez votre logique de suivi (DB, cookies, etc.)
+    return 0; // Exemple basique
+}

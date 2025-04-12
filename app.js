@@ -3,11 +3,11 @@ const CONFIG = {
     MAX_FREE_GENERATIONS: 3,
     PRO_PRICE: 5,
     ANALYTICS_ID: 'G-7GRH1XFH9W',
-    STRIPE_PUBLIC_KEY: 'pk_test_votre_clé_publique_stripe',
-    PRICE_ID: 'votre_price_id_stripe'
+    STRIPE_PUBLIC_KEY: process.env.STRIPE_PUBLIC_KEY,
+    STRIPE_PRICE_ID: process.env.STRIPE_PRICE_ID
 };
 
-// Initialisez Stripe
+// Initialisation Stripe
 const stripe = Stripe(CONFIG.STRIPE_PUBLIC_KEY);
 
 // Éléments DOM
@@ -29,32 +29,40 @@ const DOM = {
 
 // State
 const state = {
-    freeGenerations: localStorage.getItem('freeGenerations') || 0,
-    isPro: localStorage.getItem('isPro') === 'true'
+    freeGenerations: parseInt(localStorage.getItem('freeGenerations')) || 0,
+    isPro: localStorage.getItem('isPro') === 'true',
+    stripe: null
 };
 
 // Initialisation
 document.addEventListener('DOMContentLoaded', init);
 
-function init() {
-    setupEventListeners();
-    checkProStatus();
+async function init() {
+    try {
+        state.stripe = Stripe(CONFIG.STRIPE_PUBLIC_KEY);
+        setupEventListeners();
+        await checkProStatus();
+        
+        // Vérifie si retour de paiement réussi
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('payment_success') === 'true') {
+            showToast("Paiement réussi ! Vous avez maintenant accès à la version Pro.");
+            state.isPro = true;
+            localStorage.setItem('isPro', 'true');
+            history.replaceState(null, '', window.location.pathname);
+        }
+    } catch (error) {
+        console.error("Initialisation error:", error);
+    }
 }
 
 function setupEventListeners() {
-    // Génération de bio
     DOM.generateBtn.addEventListener('click', handleBioGeneration);
-    
-    // Actions sur le résultat
     DOM.pdfBtn.addEventListener('click', exportToPDF);
     DOM.copyBtn.addEventListener('click', copyToClipboard);
-    
-    // Version Pro
     DOM.proBtn.addEventListener('click', showProModal);
     DOM.checkoutBtn.addEventListener('click', startCheckout);
     DOM.closeModalBtn.addEventListener('click', hideProModal);
-    
-    // Compteur de caractères
     DOM.bioContent.addEventListener('input', updateCharCount);
 }
 
@@ -80,7 +88,6 @@ async function handleBioGeneration() {
         });
         
         checkForProOffer();
-        
     } catch (error) {
         showError(error.message);
         trackEvent('generation_error', { error: error.message });
@@ -88,32 +95,39 @@ async function handleBioGeneration() {
 }
 
 async function generateBio(job, skills) {
-    state.freeGenerations++;
-    localStorage.setItem('freeGenerations', state.freeGenerations);
-    
-    // Simulation de génération - remplacez par votre appel API réel
-    return new Promise((resolve) => {
-        setTimeout(() => {
-            const bios = [
-                `**${job} spécialisé en ${skills}**\n\n` +
-                "- Passionné par l'innovation et la création de solutions techniques\n" +
-                "- Expérience dans le développement d'applications web et mobiles\n" +
-                "- Expertise en architecture logicielle et bonnes pratiques de code",
-                
-                `🚀 ${job} | ${skills.split(',').join(' | ')}\n\n` +
-                "🔹 Création d'applications performantes et évolutives\n" +
-                "🔹 Collaboration avec des équipes pluridisciplinaires\n" +
-                "🔹 Recherche constante d'amélioration et d'optimisation",
-                
-                `Technologies maîtrisées : ${skills}\n\n` +
-                "- Conception et développement d'architectures logicielles\n" +
-                "- Mise en place de bonnes pratiques et standards de codage\n" +
-                "- Optimisation des performances et résolution de problèmes complexes"
-            ];
-            
-            resolve(bios[Math.floor(Math.random() * bios.length)]);
-        }, 1000);
-    });
+    try {
+        state.freeGenerations++;
+        localStorage.setItem('freeGenerations', state.freeGenerations);
+        
+        const response = await fetch("/api/generate", {
+            method: "POST",
+            headers: { 
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${localStorage.getItem('pro_token') || ''}`
+            },
+            body: JSON.stringify({ 
+                job, 
+                skills, 
+                tone: "professional",
+                isPro: state.isPro
+            })
+        });
+
+        if (response.status === 402) {
+            throw new Error("Upgrade to Pro required");
+        }
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || "Erreur lors de la génération");
+        }
+
+        const data = await response.json();
+        return data.bio || data.choices?.[0]?.message?.content;
+    } catch (error) {
+        console.error("Generate error:", error);
+        throw error;
+    }
 }
 
 function showLoading() {
@@ -134,9 +148,10 @@ function showResult(bio) {
 
 function formatBio(text) {
     return text
-        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+        .replace(/\*\*(.*?)\*\*/g, '<strong class="font-semibold text-blue-600">$1</strong>')
         .replace(/\n/g, '<br>')
-        .replace(/^- (.*?)$/gm, '<div class="flex items-start mb-2"><span class="text-blue-500 mr-2">•</span><span>$1</span></div>');
+        .replace(/^- (.*?)$/gm, '<div class="flex items-start mb-3 pl-4"><span class="text-blue-500 mr-2">•</span><span>$1</span></div>')
+        .replace(/## (.*?)\n/g, '<h3 class="text-xl font-bold mt-6 mb-3 text-gray-800">$1</h3>');
 }
 
 function updateCharCount() {
@@ -149,19 +164,14 @@ function exportToPDF() {
     try {
         const { jsPDF } = window.jspdf;
         const doc = new jsPDF();
-        
-        // Utilisez textContent pour mieux préserver les sauts de ligne
         const text = DOM.bioContent.textContent || '';
         
-        // Configurez la police pour supporter les caractères spéciaux
         doc.setFont("helvetica");
         doc.setFontSize(12);
         
-        // Utilisez splitTextToSize pour gérer les sauts de ligne
         const lines = doc.splitTextToSize(text, 180);
-        
-        // Ajoutez le texte ligne par ligne
         let y = 15;
+        
         lines.forEach(line => {
             if (y > 280) {
                 doc.addPage();
@@ -177,10 +187,8 @@ function exportToPDF() {
         
         doc.save(`bio-linkedin-${new Date().toISOString().slice(0, 10)}.pdf`);
         trackEvent('pdf_exported');
-        
     } catch (error) {
         showError("Erreur lors de la génération du PDF: " + error.message);
-        trackEvent('pdf_error', { error: error.message });
     }
 }
 
@@ -203,9 +211,23 @@ function copyToClipboard() {
 }
 
 // Version Pro
-function checkProStatus() {
-    // Dans une vraie application, vérifiez via une API
-    state.isPro = localStorage.getItem('isPro') === 'true';
+async function checkProStatus() {
+    try {
+        const response = await fetch('/api/check-pro-status', {
+            headers: {
+                'Authorization': `Bearer ${localStorage.getItem('auth_token') || ''}`
+            }
+        });
+        
+        if (response.ok) {
+            const data = await response.json();
+            state.isPro = data.isPro;
+            localStorage.setItem('isPro', data.isPro ? 'true' : 'false');
+        }
+    } catch (error) {
+        console.error("Pro status check failed:", error);
+        state.isPro = localStorage.getItem('isPro') === 'true';
+    }
 }
 
 function checkForProOffer() {
@@ -230,36 +252,36 @@ async function startCheckout() {
     try {
         showLoadingInModal();
         
-        // En production, utilisez votre endpoint backend
-        const session = await createCheckoutSession();
-        
-        // Redirigez vers Stripe
-        const result = await stripe.redirectToCheckout({
-            sessionId: session.id
+        const response = await fetch('/api/create-checkout-session', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                priceId: CONFIG.STRIPE_PRICE_ID,
+                successUrl: `${window.location.origin}/?payment_success=true`,
+                cancelUrl: window.location.origin,
+                customerEmail: localStorage.getItem('user_email') || ''
+            })
         });
-        
-        if (result.error) {
-            showErrorInModal(result.error.message);
-        }
-        
-    } catch (error) {
-        showErrorInModal("Erreur lors du paiement: " + error.message);
-        trackEvent('checkout_error', { error: error.message });
-    }
-}
 
-// Simulation de création de session - remplacez par un appel à votre backend
-async function createCheckoutSession() {
-    return new Promise((resolve) => {
-        setTimeout(() => {
-            resolve({ id: 'simulated_session_id_' + Math.random().toString(36).substring(2) });
-        }, 500);
-    });
+        if (!response.ok) throw new Error(await response.text());
+
+        const { id } = await response.json();
+        const result = await stripe.redirectToCheckout({ sessionId: id });
+
+        if (result.error) throw result.error;
+    } catch (error) {
+        showErrorInModal(error.message || "Erreur lors du paiement");
+        console.error("Checkout error:", error);
+    } finally {
+        resetCheckoutButton();
+    }
 }
 
 function showLoadingInModal() {
     DOM.checkoutBtn.innerHTML = `
-        <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white inline-block" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+        <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
         </svg>
@@ -269,15 +291,12 @@ function showLoadingInModal() {
 }
 
 function showErrorInModal(message) {
-    const errorElement = document.createElement('div');
-    errorElement.className = 'text-red-500 text-sm mt-2';
-    errorElement.textContent = message;
-    DOM.checkoutBtn.parentNode.appendChild(errorElement);
+    const errorDiv = document.createElement('div');
+    errorDiv.className = 'text-red-500 text-sm mt-2 text-center';
+    errorDiv.textContent = message;
+    DOM.checkoutBtn.parentNode.appendChild(errorDiv);
     
-    setTimeout(() => {
-        errorElement.remove();
-        resetCheckoutButton();
-    }, 5000);
+    setTimeout(() => errorDiv.remove(), 5000);
 }
 
 function resetCheckoutButton() {
@@ -315,7 +334,6 @@ function showToast(message) {
 
 // Analytics
 function trackEvent(action, params = {}) {
-    // Google Analytics
     if (window.gtag) {
         gtag('event', action, {
             ...params,
@@ -323,11 +341,8 @@ function trackEvent(action, params = {}) {
             is_pro: state.isPro
         });
     }
-    
-    // Vercel Analytics
-    if (typeof window.va !== 'undefined' && typeof window.va.track === 'function') {
+    if (typeof window.va?.track === 'function') {
         window.va.track(action, params);
     }
-    
     console.log('[Analytics]', action, params);
 }
