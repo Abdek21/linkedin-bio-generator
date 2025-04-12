@@ -155,40 +155,88 @@ async function handleBioGeneration() {
         trackEvent('generation_error', { error: error.message });
     }
 }
-
 async function generateBio(job, skills) {
+    // Validation des entrées côté client
+    if (!job?.trim() || !skills?.trim()) {
+        throw new Error("Le métier et les compétences sont requis");
+    }
+
     try {
-        state.freeGenerations++;
+        // Mise à jour du compteur de générations
+        state.freeGenerations = (state.freeGenerations || 0) + 1;
         localStorage.setItem('freeGenerations', state.freeGenerations);
-        
+
+        // Configuration de la requête avec timeout
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 15000); // 15s timeout
+
+        const requestBody = {
+            job: job.trim(),
+            skills: skills.trim(),
+            tone: "professional",
+            isPro: state.isPro
+        };
+
         const response = await fetch("/api/generate", {
             method: "POST",
             headers: { 
                 "Content-Type": "application/json",
                 "Authorization": `Bearer ${localStorage.getItem('pro_token') || ''}`
             },
-            body: JSON.stringify({ 
-                job, 
-                skills, 
-                tone: "professional",
-                isPro: state.isPro
-            })
+            body: JSON.stringify(requestBody),
+            signal: controller.signal
         });
 
+        clearTimeout(timeoutId);
+
+        // Gestion des codes HTTP spécifiques
         if (response.status === 402) {
-            throw new Error("Upgrade to Pro required");
+            trackEvent('pro_required');
+            throw new Error("Passez à la version Pro pour plus de générations");
+        }
+
+        if (response.status === 429) {
+            throw new Error("Trop de requêtes - Veuillez réessayer plus tard");
         }
 
         if (!response.ok) {
-            const errorData = await response.json().catch(() => ({}));
-            throw new Error(errorData.error || "Erreur lors de la génération");
+            const errorData = await response.json().catch(() => null);
+            const errorMessage = errorData?.error || 
+                               errorData?.message || 
+                               `Erreur serveur (${response.status})`;
+            throw new Error(errorMessage);
         }
 
         const data = await response.json();
-        return data.bio || data.choices?.[0]?.message?.content;
+
+        // Extraction flexible de la réponse
+        const bio = data.bio || 
+                   data.choices?.[0]?.message?.content || 
+                   data.result?.text;
+
+        if (!bio) {
+            throw new Error("Réponse inattendue du serveur");
+        }
+
+        trackEvent('bio_generated_success');
+        return bio;
+
     } catch (error) {
-        console.error("Generate error:", error);
-        throw error;
+        console.error("Erreur de génération:", error);
+        
+        // Messages d'erreur plus clairs
+        let userMessage = error.message;
+        if (error.name === 'AbortError') {
+            userMessage = "La requête a pris trop de temps - Réessayez";
+        }
+
+        trackEvent('generation_failed', {
+            error: userMessage,
+            jobLength: job?.length || 0,
+            skillsCount: skills?.split(',').length || 0
+        });
+
+        throw new Error(userMessage);
     }
 }
 

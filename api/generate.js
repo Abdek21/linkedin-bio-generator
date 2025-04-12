@@ -3,33 +3,30 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
 export default async function handler(req, res) {
     if (req.method !== 'POST') {
-        return res.setHeader('Allow', ['POST']).status(405).json({ 
-            error: 'Method not allowed' 
-        });
-    }
-
-    // Vérification des dépendances
-    if (!process.env.OPENAI_KEY) {
-        return res.status(500).json({ 
-            error: "Configuration manquante",
-            details: "Clé OpenAI non configurée"
-        });
+        return res.status(405).json({ error: 'Méthode non autorisée' });
     }
 
     try {
+        const { job, skills } = req.body;
+
         // Validation des entrées
-        const { job, skills, tone = "professional" } = req.body;
-        
         if (!job || !skills) {
             return res.status(400).json({ 
-                error: "Paramètres requis manquants",
-                details: "Les champs 'job' et 'skills' sont obligatoires"
+                error: "Champs manquants",
+                details: "Les champs 'job' et 'skills' sont requis"
             });
         }
 
-        // Appel à OpenAI avec gestion d'erreur améliorée
-        const prompt = `Génère une bio LinkedIn pour un ${job} avec comme compétences: ${skills}. Ton: ${tone}`;
-        
+        // Vérification de la clé OpenAI
+        if (!process.env.OPENAI_KEY) {
+            return res.status(500).json({ 
+                error: "Configuration serveur invalide",
+                details: "Clé OpenAI manquante"
+            });
+        }
+
+        // Appel à l'API OpenAI
+        const prompt = `Crée une bio LinkedIn pour un ${job} avec comme compétences : ${skills}.`;
         const openaiResponse = await fetch("https://api.openai.com/v1/chat/completions", {
             method: "POST",
             headers: {
@@ -40,23 +37,22 @@ export default async function handler(req, res) {
                 model: "gpt-3.5-turbo",
                 messages: [{
                     role: "system",
-                    content: "Tu es un assistant expert en création de profils LinkedIn."
+                    content: "Tu es un expert en création de bios LinkedIn."
                 }, {
                     role: "user",
                     content: prompt
                 }],
                 temperature: 0.7,
                 max_tokens: 500
-            }),
-            timeout: 10000 // 10 secondes
+            })
         });
 
         if (!openaiResponse.ok) {
             const errorData = await openaiResponse.json();
             console.error("Erreur OpenAI:", errorData);
             return res.status(502).json({ 
-                error: "Erreur du service IA",
-                details: errorData.error?.message || "Erreur inconnue de l'API OpenAI"
+                error: "Erreur de l'API OpenAI",
+                details: errorData.error?.message || "Erreur inconnue"
             });
         }
 
@@ -64,17 +60,17 @@ export default async function handler(req, res) {
         const bio = result.choices[0]?.message?.content;
 
         if (!bio) {
-            return res.status(500).json({
-                error: "Réponse vide de l'IA",
-                details: "Aucun contenu généré"
+            return res.status(500).json({ 
+                error: "Aucun contenu généré",
+                details: "L'API OpenAI n'a pas renvoyé de bio"
             });
         }
 
         return res.status(200).json({ bio });
 
     } catch (error) {
-        console.error("Erreur API generate:", error);
-        return res.status(500).json({
+        console.error("Erreur serveur:", error);
+        return res.status(500).json({ 
             error: "Erreur interne du serveur",
             details: process.env.NODE_ENV === 'development' ? error.message : undefined
         });
