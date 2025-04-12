@@ -3,10 +3,9 @@ const CONFIG = {
     MAX_FREE_GENERATIONS: 3,
     PRO_PRICE: 5,
     ANALYTICS_ID: 'G-7GRH1XFH9W',
-    STRIPE_PUBLIC_KEY: 'pk_test_51RBtzaR7rjIx88O1hAXt7EJla6Ri8fiODE467lE90STOFOEZuYPLSgJ8NY4lUg2NPBKBDfaRnojpTRezoGub7GGa00tqv7mUgk',
-    STRIPE_PRICE_ID: 'price_1RBvioR7rjIx88O162hbGlvC'
+    STRIPE_PUBLIC_KEY: process.env.NEXT_PUBLIC_STRIPE_PUBLIC_KEY,
+    STRIPE_PRICE_ID: process.env.NEXT_PUBLIC_STRIPE_PRICE_ID
 };
-
 // Éléments DOM
 const DOM = {
     jobInput: document.getElementById('job'),
