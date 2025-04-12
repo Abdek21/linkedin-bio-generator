@@ -2,8 +2,13 @@
 const CONFIG = {
     MAX_FREE_GENERATIONS: 3,
     PRO_PRICE: 5,
-    ANALYTICS_ID: 'G-7GRH1XFH9W'
+    ANALYTICS_ID: 'G-7GRH1XFH9W',
+    STRIPE_PUBLIC_KEY: 'pk_test_votre_clé_publique_stripe',
+    PRICE_ID: 'votre_price_id_stripe'
 };
+
+// Initialisez Stripe
+const stripe = Stripe(CONFIG.STRIPE_PUBLIC_KEY);
 
 // Éléments DOM
 const DOM = {
@@ -25,7 +30,7 @@ const DOM = {
 // State
 const state = {
     freeGenerations: localStorage.getItem('freeGenerations') || 0,
-    isPro: false
+    isPro: localStorage.getItem('isPro') === 'true'
 };
 
 // Initialisation
@@ -86,23 +91,29 @@ async function generateBio(job, skills) {
     state.freeGenerations++;
     localStorage.setItem('freeGenerations', state.freeGenerations);
     
-    const response = await fetch("/api/generate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ job, skills, tone: "professional" })
+    // Simulation de génération - remplacez par votre appel API réel
+    return new Promise((resolve) => {
+        setTimeout(() => {
+            const bios = [
+                `**${job} spécialisé en ${skills}**\n\n` +
+                "- Passionné par l'innovation et la création de solutions techniques\n" +
+                "- Expérience dans le développement d'applications web et mobiles\n" +
+                "- Expertise en architecture logicielle et bonnes pratiques de code",
+                
+                `🚀 ${job} | ${skills.split(',').join(' | ')}\n\n` +
+                "🔹 Création d'applications performantes et évolutives\n" +
+                "🔹 Collaboration avec des équipes pluridisciplinaires\n" +
+                "🔹 Recherche constante d'amélioration et d'optimisation",
+                
+                `Technologies maîtrisées : ${skills}\n\n` +
+                "- Conception et développement d'architectures logicielles\n" +
+                "- Mise en place de bonnes pratiques et standards de codage\n" +
+                "- Optimisation des performances et résolution de problèmes complexes"
+            ];
+            
+            resolve(bios[Math.floor(Math.random() * bios.length)]);
+        }, 1000);
     });
-
-    if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Erreur lors de la génération");
-    }
-
-    const data = await response.json();
-    if (!data?.choices?.[0]?.message?.content) {
-        throw new Error("Format de réponse inattendu");
-    }
-
-    return formatBio(data.choices[0].message.content);
 }
 
 function showLoading() {
@@ -115,7 +126,8 @@ function showLoading() {
 }
 
 function showResult(bio) {
-    DOM.bioContent.innerHTML = bio;
+    DOM.bioContent.innerHTML = formatBio(bio);
+    DOM.resultSection.classList.remove('hidden');
     DOM.resultSection.classList.add('fade-in');
     updateCharCount();
 }
@@ -128,7 +140,7 @@ function formatBio(text) {
 }
 
 function updateCharCount() {
-    const text = DOM.bioContent.innerText || '';
+    const text = DOM.bioContent.textContent || '';
     DOM.charCount.textContent = `${text.length} caractères`;
 }
 
@@ -137,11 +149,27 @@ function exportToPDF() {
     try {
         const { jsPDF } = window.jspdf;
         const doc = new jsPDF();
-        const text = DOM.bioContent.innerText;
         
+        // Utilisez textContent pour mieux préserver les sauts de ligne
+        const text = DOM.bioContent.textContent || '';
+        
+        // Configurez la police pour supporter les caractères spéciaux
         doc.setFont("helvetica");
         doc.setFontSize(12);
-        doc.text(text, 15, 15, { maxWidth: 180 });
+        
+        // Utilisez splitTextToSize pour gérer les sauts de ligne
+        const lines = doc.splitTextToSize(text, 180);
+        
+        // Ajoutez le texte ligne par ligne
+        let y = 15;
+        lines.forEach(line => {
+            if (y > 280) {
+                doc.addPage();
+                y = 15;
+            }
+            doc.text(line, 15, y);
+            y += 7;
+        });
         
         if (!state.isPro) {
             addWatermark(doc);
@@ -151,7 +179,7 @@ function exportToPDF() {
         trackEvent('pdf_exported');
         
     } catch (error) {
-        showError("Erreur lors de la génération du PDF");
+        showError("Erreur lors de la génération du PDF: " + error.message);
         trackEvent('pdf_error', { error: error.message });
     }
 }
@@ -164,7 +192,7 @@ function addWatermark(doc) {
 
 // Gestion Copie
 function copyToClipboard() {
-    navigator.clipboard.writeText(DOM.bioContent.innerText)
+    navigator.clipboard.writeText(DOM.bioContent.textContent)
         .then(() => {
             showToast("Bio copiée dans le presse-papiers !");
             trackEvent('content_copied');
@@ -176,7 +204,7 @@ function copyToClipboard() {
 
 // Version Pro
 function checkProStatus() {
-    // Ici vous devriez vérifier le statut Pro via une API
+    // Dans une vraie application, vérifiez via une API
     state.isPro = localStorage.getItem('isPro') === 'true';
 }
 
@@ -198,11 +226,63 @@ function hideProModal() {
     document.body.style.overflow = '';
 }
 
-function startCheckout() {
-    // Ici vous devriez intégrer Stripe/Lemon Squeezy
-    window.open(`https://checkout.stripe.com?prefilled_email=user@example.com&amount=${CONFIG.PRO_PRICE}00`, '_blank');
-    trackEvent('checkout_started');
-    hideProModal();
+async function startCheckout() {
+    try {
+        showLoadingInModal();
+        
+        // En production, utilisez votre endpoint backend
+        const session = await createCheckoutSession();
+        
+        // Redirigez vers Stripe
+        const result = await stripe.redirectToCheckout({
+            sessionId: session.id
+        });
+        
+        if (result.error) {
+            showErrorInModal(result.error.message);
+        }
+        
+    } catch (error) {
+        showErrorInModal("Erreur lors du paiement: " + error.message);
+        trackEvent('checkout_error', { error: error.message });
+    }
+}
+
+// Simulation de création de session - remplacez par un appel à votre backend
+async function createCheckoutSession() {
+    return new Promise((resolve) => {
+        setTimeout(() => {
+            resolve({ id: 'simulated_session_id_' + Math.random().toString(36).substring(2) });
+        }, 500);
+    });
+}
+
+function showLoadingInModal() {
+    DOM.checkoutBtn.innerHTML = `
+        <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white inline-block" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+        Traitement en cours...
+    `;
+    DOM.checkoutBtn.disabled = true;
+}
+
+function showErrorInModal(message) {
+    const errorElement = document.createElement('div');
+    errorElement.className = 'text-red-500 text-sm mt-2';
+    errorElement.textContent = message;
+    DOM.checkoutBtn.parentNode.appendChild(errorElement);
+    
+    setTimeout(() => {
+        errorElement.remove();
+        resetCheckoutButton();
+    }, 5000);
+}
+
+function resetCheckoutButton() {
+    DOM.checkoutBtn.innerHTML = 'Commencer l\'essai gratuit (7 jours)';
+    DOM.checkoutBtn.disabled = false;
 }
 
 // Helpers
@@ -244,7 +324,7 @@ function trackEvent(action, params = {}) {
         });
     }
     
-    // Vercel Analytics - vérification plus robuste
+    // Vercel Analytics
     if (typeof window.va !== 'undefined' && typeof window.va.track === 'function') {
         window.va.track(action, params);
     }
