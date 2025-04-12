@@ -49,13 +49,7 @@ async function init() {
         
         setupEventListeners();
         
-        // Vérification statut Pro (tolérante aux erreurs)
-        try {
-            await checkProStatus();
-        } catch (e) {
-            console.warn("Vérification statut Pro ignorée:", e);
-            state.isPro = localStorage.getItem('isPro') === 'true';
-        }
+   
         
         // Gestion retour de paiement
         const urlParams = new URLSearchParams(window.location.search);
