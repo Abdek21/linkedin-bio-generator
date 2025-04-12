@@ -8,7 +8,11 @@ const CONFIG = {
 };
 
 // Initialisation Stripe
-const stripe = Stripe(CONFIG.STRIPE_PUBLIC_KEY);
+const stripe = Stripe(CONFIG.STRIPE_PUBLIC_KEY ,{
+    betas: ['disable_analytics_v1'], // Désactive les trackers
+    apiVersion: '2023-08-16', // Toujours utiliser la dernière version
+    locale: 'fr' // Adapte l'interface
+});
 
 // Éléments DOM
 const DOM = {
@@ -346,3 +350,58 @@ function trackEvent(action, params = {}) {
     }
     console.log('[Analytics]', action, params);
 }
+
+
+// Dans app.js
+async function checkAdBlocker() {
+    try {
+      // Teste une requête vers un domaine Stripe souvent bloqué
+      await fetch('https://r.stripe.com/health', {
+        method: 'HEAD', // Méthode légère
+        mode: 'no-cors',
+        cache: 'no-store'
+      });
+      return false; // Pas de bloqueur détecté
+    } catch {
+      return true; // Bloqueur détecté
+    }
+  }
+  
+  // Utilisation au chargement de la page
+  document.addEventListener('DOMContentLoaded', async () => {
+    if (await checkAdBlocker()) {
+      showAdblockWarning();
+    }
+  });
+  
+  function showAdblockWarning() {
+    const warningHTML = `
+      <div class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-lg p-6 max-w-md w-full">
+          <h3 class="text-xl font-bold text-red-600 mb-3">Attention requis</h3>
+          <p class="mb-4">Votre bloqueur de publicités empêche le système de paiement de fonctionner.</p>
+          
+          <div class="space-y-3 mb-5">
+            <div class="flex items-start">
+              <span class="mr-2">🔹</span>
+              <p>Cliquez sur l'icône <img src="assets/adblock-icon.png" class="inline-block w-5 h-5"> dans votre barre d'outils</p>
+            </div>
+            <div class="flex items-start">
+              <span class="mr-2">🔹</span>
+              <p>Sélectionnez <strong>"Désactiver pour ce site"</strong></p>
+            </div>
+            <div class="flex items-start">
+              <span class="mr-2">🔹</span>
+              <p>Actualisez la page avec <kbd>F5</kbd></p>
+            </div>
+          </div>
+  
+          <button onclick="this.closest('div').remove()" 
+                  class="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded">
+            J'ai désactivé mon bloqueur
+          </button>
+        </div>
+      </div>
+    `;
+    document.body.insertAdjacentHTML('beforeend', warningHTML);
+  }
