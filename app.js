@@ -35,19 +35,19 @@ const state = {
 document.addEventListener('DOMContentLoaded', init);
 
 async function init() {
-    if (await checkAdBlocker()) {
-        showAdblockWarning();
-        return;
-    }
-
     try {
         // Initialisation Stripe
-        if (!state.stripe) {
-            state.stripe = Stripe(CONFIG.STRIPE_PUBLIC_KEY);
-        }
-
+        state.stripe = Stripe(CONFIG.STRIPE_PUBLIC_KEY);
+        
         setupEventListeners();
-        await checkProStatus();
+        
+        // Désactive la vérification Pro si l'endpoint n'existe pas
+        try {
+            await checkProStatus();
+        } catch (e) {
+            console.warn("Endpoint check-pro-status non disponible");
+            state.isPro = localStorage.getItem('isPro') === 'true';
+        }
         
         // Vérifie si retour de paiement réussi
         const urlParams = new URLSearchParams(window.location.search);
@@ -110,8 +110,7 @@ async function generateBio(job, skills) {
         const response = await fetch("/api/generate", {
             method: "POST",
             headers: { 
-                "Content-Type": "application/json",
-                "Authorization": `Bearer ${localStorage.getItem('pro_token') || ''}`
+                "Content-Type": "application/json"
             },
             body: JSON.stringify({ 
                 job, 
@@ -120,10 +119,6 @@ async function generateBio(job, skills) {
                 isPro: state.isPro
             })
         });
-
-        if (response.status === 402) {
-            throw new Error("Upgrade to Pro required");
-        }
 
         if (!response.ok) {
             const errorData = await response.json().catch(() => ({}));
@@ -221,11 +216,7 @@ function copyToClipboard() {
 // Version Pro
 async function checkProStatus() {
     try {
-        const response = await fetch('/api/check-pro-status', {
-            headers: {
-                'Authorization': `Bearer ${localStorage.getItem('auth_token') || ''}`
-            }
-        });
+        const response = await fetch('/api/check-pro-status');
         
         if (response.ok) {
             const data = await response.json();
@@ -234,7 +225,7 @@ async function checkProStatus() {
         }
     } catch (error) {
         console.error("Pro status check failed:", error);
-        state.isPro = localStorage.getItem('isPro') === 'true';
+        throw error;
     }
 }
 
@@ -344,39 +335,32 @@ function showToast(message) {
     }, 3000);
 }
 
-// Analytics
+// Version simplifiée de trackEvent pour éviter les blocages
 function trackEvent(action, params = {}) {
-    if (window.gtag) {
-        gtag('event', action, {
-            ...params,
-            free_uses: state.freeGenerations,
-            is_pro: state.isPro
-        });
-    }
-    if (typeof window.va?.track === 'function') {
-        window.va.track(action, params);
-    }
-    console.log('[Analytics]', action, params);
+    console.log('[Event]', action, params);
 }
 
 // Détection AdBlock
-async function checkAdBlocker() {
-    try {
-        await fetch('https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js', { 
-            method: 'HEAD',
-            mode: 'no-cors'
-        });
-        return false;
-    } catch {
-        return true;
-    }
+function checkAdBlocker() {
+    return new Promise((resolve) => {
+        const ad = document.createElement('div');
+        ad.innerHTML = '&nbsp;';
+        ad.className = 'adsbox';
+        document.body.appendChild(ad);
+        
+        window.setTimeout(() => {
+            const isBlocked = ad.offsetHeight === 0;
+            document.body.removeChild(ad);
+            resolve(isBlocked);
+        }, 100);
+    });
 }
 
 function showAdblockWarning() {
     const warning = document.createElement('div');
     warning.innerHTML = `
     <div class="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-[9999] p-4">
-        <div class="bg-white rounded-xl p-6 max-w-md w-full animate-bounce">
+        <div class="bg-white rounded-xl p-6 max-w-md w-full">
             <div class="text-center">
                 <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 mb-4">
                     <svg class="h-6 w-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -385,18 +369,12 @@ function showAdblockWarning() {
                 </div>
                 <h3 class="text-lg font-medium text-gray-900 mb-2">Blocage détecté</h3>
                 <div class="text-sm text-gray-500 mb-6">
-                    <p class="mb-3">Votre bloqueur de publicités empêche le bon fonctionnement de l'application.</p>
-                    <ol class="list-decimal list-inside space-y-1 text-left">
-                        <li>Cliquez sur l'icône <span class="bg-gray-200 px-1 rounded">🛡️</span> dans votre navigateur</li>
-                        <li>Sélectionnez "Désactiver pour ce site"</li>
-                        <li>Actualisez la page (F5)</li>
-                    </ol>
+                    <p>Votre bloqueur de publicités empêche certaines fonctionnalités.</p>
+                    <p class="mt-2">Veuillez le désactiver pour ce site.</p>
                 </div>
-                <div class="px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
-                    <button type="button" onclick="location.reload()" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-red-600 text-base font-medium text-white hover:bg-red-700 focus:outline-none sm:ml-3 sm:w-auto sm:text-sm">
-                        J'ai désactivé le bloqueur
-                    </button>
-                </div>
+                <button onclick="location.reload()" class="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700">
+                    J'ai désactivé le bloqueur
+                </button>
             </div>
         </div>
     </div>`;
