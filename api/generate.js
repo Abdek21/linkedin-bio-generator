@@ -2,11 +2,10 @@ import Stripe from 'stripe';
 import { v4 as uuidv4 } from 'uuid'; // Pour générer un requestId unique
 import rateLimit from 'express-rate-limit'; // Si tu utilises Express, sinon tu peux ajuster avec un autre mécanisme si nécessaire.
 
-// Initialisation sécurisée de Stripe avec vérification
 let stripe;
 try {
-  stripe = process.env.STRIPE_SECRET_KEY 
-    ? new Stripe(process.env.STRIPE_SECRET_KEY) 
+  stripe = process.env.STRIPE_SECRET_KEY
+    ? new Stripe(process.env.STRIPE_SECRET_KEY)
     : null;
 } catch (err) {
   console.error("Erreur d'initialisation Stripe:", err);
@@ -26,7 +25,6 @@ export default async function handler(req, res) {
     body: req.body 
   });
 
-  // Application du rate limiting
   limiter(req, res, async () => {
     // Vérification méthode HTTP
     if (req.method !== 'POST') {
@@ -40,7 +38,7 @@ export default async function handler(req, res) {
 
     try {
       const { job, skills } = req.body;
-      
+
       // Validation renforcée
       if (!job?.trim() || job.length > 100) {
         return res.status(400).json({ 
@@ -60,7 +58,6 @@ export default async function handler(req, res) {
         });
       }
 
-      // Vérification des clés API
       if (!process.env.OPENAI_KEY) {
         console.error(`[RequestID: ${requestId}] Configuration manquante: OPENAI_KEY`);
         return res.status(503).json({ 
@@ -70,7 +67,6 @@ export default async function handler(req, res) {
         });
       }
 
-      // Construction du prompt
       const prompt = `Génère une bio LinkedIn professionnelle pour un ${job.trim()} avec ces compétences : ${skills.trim()}.`;
       console.log(`[RequestID: ${requestId}] Prompt généré:`, prompt);
 
