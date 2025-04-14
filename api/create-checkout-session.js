@@ -1,19 +1,12 @@
 import Stripe from 'stripe';
 
-// Toujours vérifier que la clé est présente
-const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
-
-if (!stripeSecretKey) {
-  throw new Error('STRIPE_SECRET_KEY is not defined');
-}
-
-const stripe = new Stripe(stripeSecretKey, {
-  apiVersion: '2023-10-16', // Assure-toi d'utiliser l'apiVersion de Stripe
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
+  apiVersion: '2023-10-16', // <-- précise toujours l'API version Stripe
 });
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method Not Allowed' });
+    return res.status(405).json({ error: 'Method not allowed' });
   }
 
   const { priceId, successUrl, cancelUrl } = req.body;
@@ -36,9 +29,9 @@ export default async function handler(req, res) {
       cancel_url: cancelUrl,
     });
 
-    return res.status(200).json({ id: session.id, url: session.url }); // <-- ajoute l'URL de session
-  } catch (err) {
-    console.error('Erreur Stripe:', err.message);
-    return res.status(500).json({ error: 'Internal Server Error', message: err.message });
+    return res.status(200).json({ id: session.id, url: session.url });
+  } catch (error) {
+    console.error('Stripe error:', error);
+    return res.status(500).json({ error: error.message });
   }
 }
