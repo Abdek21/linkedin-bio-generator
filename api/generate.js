@@ -103,7 +103,7 @@ export default async function handler(req, res) {
 
       // Gestion réponse OpenAI
       if (!openaiResponse.ok) {
-        const errorData = await openaiResponse.json().catch(() => ({}));
+        const errorData = await openaiResponse.text();  // Utiliser text() si ce n'est pas du JSON
         console.error(`[RequestID: ${requestId}] Erreur OpenAI:`, {
           status: openaiResponse.status,
           error: errorData
@@ -111,30 +111,40 @@ export default async function handler(req, res) {
         
         return res.status(502).json({ 
           error: "Service IA indisponible",
-          details: errorData.error?.message || "Erreur de communication avec l'API",
+          details: errorData,
           status: openaiResponse.status,
           requestId
         });
       }
 
-      const result = await openaiResponse.json();
-      const bio = result.choices?.[0]?.message?.content;
+      try {
+        const result = await openaiResponse.json();  // Parser en JSON uniquement si la réponse est valide
+        const bio = result.choices?.[0]?.message?.content;
 
-      if (!bio?.trim()) {
-        console.error(`[RequestID: ${requestId}] Réponse OpenAI inattendue:`, result);
-        return res.status(500).json({ 
-          error: "Format de réponse inattendu",
-          details: "L'IA n'a pas retourné de contenu valide",
+        if (!bio?.trim()) {
+          console.error(`[RequestID: ${requestId}] Réponse OpenAI inattendue:`, result);
+          return res.status(500).json({ 
+            error: "Format de réponse inattendu",
+            details: "L'IA n'a pas retourné de contenu valide",
+            requestId
+          });
+        }
+
+        console.log(`[RequestID: ${requestId}] Bio générée avec succès`);
+        return res.status(200).json({ 
+          bio,
+          tokens_used: result.usage?.total_tokens,
+          requestId
+        });
+
+      } catch (err) {
+        console.error(`[RequestID: ${requestId}] Erreur de parsing JSON:`, err);
+        return res.status(500).json({
+          error: "Erreur lors du traitement de la réponse",
+          details: err.message,
           requestId
         });
       }
-
-      console.log(`[RequestID: ${requestId}] Bio générée avec succès`);
-      return res.status(200).json({ 
-        bio,
-        tokens_used: result.usage?.total_tokens,
-        requestId
-      });
 
     } catch (error) {
       console.error(`[RequestID: ${requestId}] Erreur complète:`, {
