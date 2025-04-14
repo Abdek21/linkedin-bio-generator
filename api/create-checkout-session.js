@@ -2,6 +2,11 @@ import Stripe from 'stripe';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
+// Obligatoire pour dire que c'est une vraie API sur Vercel
+export const config = {
+  runtime: 'nodejs', 
+};
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
