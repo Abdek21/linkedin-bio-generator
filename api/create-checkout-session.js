@@ -1,12 +1,16 @@
-// Charger dotenv si nécessaire (utile uniquement en développement local)
-require('dotenv').config();
-console.log("Stripe secret key:", process.env.STRIPE_SECRET_KEY); // Log pour vérifier
+// Charger dotenv en premier
+require('dotenv').config({ path: `${__dirname}/../.env` }); // Chemin explicite
+
+console.log("Chemin .env:", `${__dirname}/../.env`);
+console.log("Stripe key:", process.env.STRIPE_SECRET_KEY);
+
+if (!process.env.STRIPE_SECRET_KEY) {
+  throw new Error("STRIPE_SECRET_KEY manquante !");
+}
+
 // Importation de Stripe
-const { Stripe } = require('stripe');
-
-// Créer une instance de Stripe avec la clé API stockée dans les variables d'environnement
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY); // Utilisation de la variable d'environnement
-
+const Stripe = require('stripe').Stripe;
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 // Fonction handler pour traiter les requêtes
 module.exports = async function handler(req, res) {
   // Vérification que la méthode de la requête est bien POST
