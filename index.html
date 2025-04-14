@@ -237,7 +237,30 @@
 
          
        
-
+        <script>document.addEventListener('DOMContentLoaded', function () {
+            // Récupère le bouton qui déclenche le modal
+            const proBtn = document.getElementById('proBtn');
+            const proModal = document.getElementById('pro-modal');
+            const closeModalBtn = document.getElementById('closeModalBtn');
+            
+            // Afficher le modal lorsqu'on clique sur le bouton
+            proBtn.addEventListener('click', function () {
+                proModal.classList.remove('hidden');
+            });
+        
+            // Fermer le modal lorsqu'on clique sur le bouton de fermeture
+            closeModalBtn.addEventListener('click', function () {
+                proModal.classList.add('hidden');
+            });
+        
+            // Fermer le modal si l'utilisateur clique en dehors de la boîte de dialogue
+            proModal.addEventListener('click', function (event) {
+                if (event.target === proModal) {
+                    proModal.classList.add('hidden');
+                }
+            });
+        });
+        </script>
     <!-- App JS -->
     <script src="app.js"></script>
 </body>
