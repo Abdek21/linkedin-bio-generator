@@ -101,24 +101,13 @@ export default async function handler(req, res) {
 
       clearTimeout(timeout);
 
-      // Gestion réponse OpenAI
-      if (!openaiResponse.ok) {
-        const errorData = await openaiResponse.text();  // Utiliser text() si ce n'est pas du JSON
-        console.error(`[RequestID: ${requestId}] Erreur OpenAI:`, {
-          status: openaiResponse.status,
-          error: errorData
-        });
-        
-        return res.status(502).json({ 
-          error: "Service IA indisponible",
-          details: errorData,
-          status: openaiResponse.status,
-          requestId
-        });
-      }
+      // Vérification si la réponse est valide
+      const responseText = await openaiResponse.text();  // Récupère la réponse en texte brut d'abord
+      console.log(`[RequestID: ${requestId}] Réponse brute OpenAI:`, responseText);
 
       try {
-        const result = await openaiResponse.json();  // Parser en JSON uniquement si la réponse est valide
+        // Tente de parser la réponse JSON
+        const result = JSON.parse(responseText);  // Essaye de parser la réponse en JSON
         const bio = result.choices?.[0]?.message?.content;
 
         if (!bio?.trim()) {
