@@ -229,6 +229,50 @@
         </div>
     </div>
 
+
+    <script>
+        // Sélectionner les éléments du DOM
+        const checkoutBtn = document.getElementById('checkoutBtn');
+        const modal = document.getElementById('pro-modal');
+        
+        // Ajouter un événement click au bouton de checkout
+        checkoutBtn.addEventListener('click', async function () {
+            // Paramètres nécessaires
+            const priceId = 'price_1Hh1Zk2eZvKYlo2C1zB3sVrQ'; // Remplace par ton Price ID Stripe
+            const successUrl = window.location.origin + '/success';  // Redirection après succès
+            const cancelUrl = window.location.origin + '/cancel';    // Redirection après annulation
+            
+            try {
+                // Appel à l'API pour créer une session Stripe
+                const response = await fetch('/api/checkout', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ priceId, successUrl, cancelUrl }),
+                });
+    
+                const { id } = await response.json();
+    
+                // Charger Stripe et rediriger vers le checkout
+                const stripe = Stripe('pk_test_XXXXXXXXXXXXXXXXXXXXXXXX');  // Ta clé publique Stripe
+                const { error } = await stripe.redirectToCheckout({ sessionId: id });
+    
+                if (error) {
+                    console.error('Erreur lors de la redirection Stripe:', error);
+                }
+            } catch (error) {
+                console.error('Erreur lors de la création de la session Stripe:', error);
+            }
+        });
+    
+        // Ouvrir/fermer le modal
+        const closeModalBtn = document.getElementById('closeModalBtn');
+        closeModalBtn.addEventListener('click', function() {
+            modal.classList.add('hidden');  // Masquer le modal
+        });
+    </script>
+    
     <!-- Vercel Analytics -->
     <script>
         window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };
