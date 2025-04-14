@@ -1,6 +1,6 @@
 // Charger dotenv si nécessaire (utile uniquement en développement local)
 require('dotenv').config();
-
+console.log("Stripe secret key:", process.env.STRIPE_SECRET_KEY); // Log pour vérifier
 // Importation de Stripe
 const { Stripe } = require('stripe');
 
